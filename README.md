@@ -18,3 +18,5 @@ _[current major release]_
 * Added Windows Pointer Events support
 * Fixed issues
 * Reduced file size
+
+HALLO!

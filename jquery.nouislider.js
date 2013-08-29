@@ -1,4 +1,9 @@
-/* noUiSlider 3.2.1 */
+/* noUiSlider 3.2.1.hacked-upon-by-usn */
+
+/* 06-27-2013: noUiSlider was added by Dominique Moreno-Baltierra.
+ *
+ * We have hacked upon it pretty mercilessly.
+ * */
 (function ($) {
 
 	$.fn.noUiSlider = function (options, flag) {
@@ -31,7 +36,26 @@
 			_length : function (range) {
 				return (range[0] > range[1] ? range[0] - range[1] : range[1] - range[0]);
 			}
-		}
+		};
+
+        function bigPrettyNumber(n) {
+            // Number as a string, with commas. 1000 => 1,000
+            var parts=n.toString().split(".");
+            return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (parts[1] ? "." + parts[1] : "");
+        }
+
+        function andUnderOver(range, value, pretty) {
+            // format a number for display with an 'and under' less-than sign
+            // or an 'and over' plus sign.
+            var formatted = pretty ? bigPrettyNumber(value) : value;
+            if (value == range[0]) {
+                return '<' + formatted;
+            } else if (value == range[range.length - 1]) {
+                return formatted + '+';
+            } else {
+                return formatted;
+            }
+        }
 
 		// bounce handles of eachother, the edges of the slider
 		function correct(proposal, slider, handle) {
@@ -77,13 +101,15 @@
 			return parseFloat(handle[0].style[pos]);
 		}
 
-		// simplified defaults
+        // simplified defaults
 		var defaults = {
 			handles : 2,
 			serialization : {
 				to : ['', ''],
-				resolution : 0.01
-			}
+				resolution : 0.01,
+			},
+            measureLines: true,
+            displayHold: 1500
 		};
 
 		// contains all methods
@@ -100,7 +126,7 @@
 					var
 					settings = $.extend(defaults, options),
 					// handles
-					handlehtml = '<a><div></div></a>',
+					handlehtml = '<a><div class="t t-centered t-strong handle"></div></a>',
 					// save this to variable, // allows identification
 					slider = $(this).data('_isnS_', true),
 					// array of handles
@@ -189,9 +215,14 @@
 
 					slider.addClass(classes);
 
-					for (var i = 0; i < settings.handles; i++) {
-
+					for (var i = 0; i < settings.handles; i = i + 1) {
 						handles[i] = slider.append(handlehtml).children(':last');
+                        if (settings.underOver) {
+                            handles[i].find('.handle').text(andUnderOver(settings.range, settings.start[i], settings.prettyNumber));
+                        } else {
+                            var handleText = settings.prettyNumber ? bigPrettyNumber(settings.start[i]) : settings.start[i];
+                            handles[i].find('.handle').text(handleText);
+                        }
 						var setTo = percentage.to(settings.range, settings.start[i]);
 						handles[i].css(pos, setTo + '%');
 						if (setTo == 100 && handles[i].is(':first-child')) {
@@ -201,7 +232,7 @@
 						var bind = '.noUiSlider',
 						onEvent = (EVENT === 1 ? 'mousedown' : EVENT === 2 ? 'MSPointerDown' : 'touchstart') + bind + 'X',
 						moveEvent = (EVENT === 1 ? 'mousemove' : EVENT === 2 ? 'MSPointerMove' : 'touchmove') + bind,
-						offEvent = (EVENT === 1 ? 'mouseup' : EVENT === 2 ? 'MSPointerUp' : 'touchend') + bind
+						offEvent = (EVENT === 1 ? 'mouseup' : EVENT === 2 ? 'MSPointerUp' : 'touchend') + bind;
 
 						handles[i].find('div').on(onEvent, function (e) {
 
@@ -241,9 +272,9 @@
 
 									if (movement[orientation] && proposal != previousProposal) {
 										handle.css(pos, proposal + '%').data('input').val(percentage.is(settings.range, proposal).toFixed(res));
-										call(settings.slide, slider.data('_n', true));
+										call(settings.slide, slider.data('_n', true), settings);
 										previousProposal = proposal;
-										handle.css('z-index', handles.length == 2 && proposal == 100 && handle.is(':first-child') ? 2 : 1);
+										/* handle.css('z-index', handles.length == 2 && proposal == 100 && handle.is(':first-child') ? 2 : 1); */
 									}
 
 									previousClick = currentClick;
@@ -252,9 +283,12 @@
 
 									unbind.off(bind);
 									$('body').removeClass('TOUCH');
-									if (slider.find('.active').removeClass('active').end().data('_n')) {
+									if (slider.find('.active').end().data('_n')) {
 										slider.data('_n', false).change();
 									}
+                                    setTimeout(function () {
+                                        slider.find('.active').removeClass('active');
+                                    }, settings.displayHold);
 
 								});
 
@@ -272,8 +306,12 @@
 								proposal = ((currentClick[orientation] - slider.offset()[pos]) * 100) / (orientation ? slider.height() : slider.width()),
 								handle = handles.length > 1 ? (currentClick[orientation] < (handles[0].offset()[pos] + handles[1].offset()[pos]) / 2 ? handles[0] : handles[1]) : handles[0];
 								setHandle(handle, correct(proposal, slider, handle), slider);
+                                $(handle).find('.handle').addClass('active');
 								call(settings.slide, slider);
 								slider.change();
+                                setTimeout(function () {
+                                    $(handle).find('.handle').removeClass('active');
+                                }, settings.displayHold);
 							}
 						});
 					}
@@ -298,7 +336,7 @@
 								},
 								handle : handles[i]
 							});
-						} else {
+					    } else {
 							handles[i].data('input', settings.serialization.to[i].data('handleNR', i).val(val).change(function () {
 									var arr = [null, null];
 									arr[$(this).data('handleNR')] = $(this).val();
@@ -348,17 +386,17 @@
 			disabled : function () {
 				return flag ? $(this).addClass('disabled') : $(this).removeClass('disabled');
 			}
-		}
+		};
 
 		// remap the native/current val function to noUiSlider
 		var $_val = jQuery.fn.val;
 
 		jQuery.fn.val = function () {
 			return this.data('_isnS_') ? methods.val.apply(this, arguments) : $_val.apply(this, arguments);
-		}
+		};
 
 		return options == "disabled" ? methods.disabled.apply(this) : methods.create.apply(this);
 
-	}
+	};
 
 })(jQuery);

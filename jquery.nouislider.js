@@ -118,8 +118,8 @@
 
 				return this.each(function () {
 
-					// set handle to position
 					function setHandle(handle, to, slider) {
+					// set handle to position
 						handle.css(pos, to + '%').data('input').val(percentage.is(settings.range, to).toFixed(res));
 					}
 
@@ -144,6 +144,47 @@
 					// counts decimals in serialization, sets default
 					split = (settings.serialization.resolution = settings.serialization.resolution || 0.01).toString().split('.'),
 					res = split[0] == 1 ? 0 : split[1].length;
+
+                    this.settings = settings;
+                    this.handles = handles;
+                    this.slider = slider;
+                    this.pos = pos;
+                    this.orientation = orientation;
+                    this.classes = classes;
+
+
+                    // evan's new public methods
+                    this.allValues = function () {
+                        var values = [];
+                        $.each(this.handles, function (i, handle) {
+                            values.push(handle.data().input.val());
+                        });
+                        return values;
+                    };
+                    this.allPositions = function () {
+                        var that = this,
+                            values = [],
+                            width = Math.abs(that.settings.range[1] - that.settings.range[0]),
+                            offset = that.settings.range[0] * 100 / width;
+
+                        $.each(that.allValues(), function (i, v) {
+                                values.push((v * 100 / width) - offset);
+                        });
+                        return values;
+                    };
+                    this.updatePositions = function () {
+                        var that = this,
+                            positions = this.allPositions();
+                        $.each(that.handles, function (i, handle) {
+                            handle.css('left', positions[i] + '%');
+                        });
+                    };
+                    this.max = function () {
+                        var that = this;
+                        that.handles[0].data().input.val(that.settings.range[0]);
+                        that.handles[1].data().input.val(that.settings.range[1]);
+                        that.updatePositions();
+                    };
 
 					settings.start = num(settings.start) ? [settings.start, 0] : settings.start;
 
@@ -386,17 +427,17 @@
 			disabled : function () {
 				return flag ? $(this).addClass('disabled') : $(this).removeClass('disabled');
 			}
-		};
+		}
 
 		// remap the native/current val function to noUiSlider
 		var $_val = jQuery.fn.val;
 
 		jQuery.fn.val = function () {
 			return this.data('_isnS_') ? methods.val.apply(this, arguments) : $_val.apply(this, arguments);
-		};
+		}
 
 		return options == "disabled" ? methods.disabled.apply(this) : methods.create.apply(this);
 
-	};
+	}
 
 })(jQuery);
